@@ -24,56 +24,131 @@ Module Module1
 		RT_RCDATA = 10 '原始数据或自定义资源
 	End Enum
 	'#Disable Warning BC0649
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
 	Public Structure ControlData
-        Public Style As UInteger
-        Public ExStyle As UInteger
-        Public x As UShort
-        Public y As UShort
-        Public cx As UShort
-        Public cy As UShort
-        Public id As UShort
-    End Structure
-    <StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
-    Public Structure DialogBoxHeader
-        Public Style As UInteger
-        Public ExStyle As UInteger
-        Public DlgItems As UShort 'control amount
-        Public x As UShort
-        Public y As UShort
-        Public cx As UShort
-        Public cy As UShort
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-        Public menuName() As Byte
-    End Structure
-    <StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
-    Public Structure DialogFont
-        Public wPointSize As UShort
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-        Public FontName() As Byte
-    End Structure
-    <StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
-    Public Structure DialogBoxHeaderEx
-        Public SignEx As UInteger '0xFFFF0001
-        Public Version As UInteger
-        Public ExStyle As UInteger
-        Public Style As UInteger
-        Public DlgItems As UShort 'control amount
-        Public x As UShort
-        Public y As UShort
-        Public cx As UShort
-        Public cy As UShort
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-        Public menuName() As Byte
-    End Structure
-    <StructLayout(LayoutKind.Sequential)>
-    Public Structure DialogFontEx
-        Public wPointSize As UShort
-        Public Weight As UShort
-        Public Italic As Byte
-        Public CharSet As Byte
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-        Public FontName() As Byte
-    End Structure
+		Public Style As UInteger
+		Public ExStyle As UInteger
+		Public x As UShort
+		Public y As UShort
+		Public cx As UShort
+		Public cy As UShort
+		Public id As UShort
+	End Structure
+	<StructLayout(LayoutKind.Sequential, Pack:=2)>
+	Friend Structure ControlDataEx
+		Public helpId As UInteger
+		Public exStyle As UInteger
+		Public style As UInteger
+		Public x As UShort
+		Public y As UShort
+		Public cx As UShort
+		Public cy As UShort
+		Public id As UShort
+	End Structure
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	Public Structure DialogBoxHeader
+		Public Style As UInteger
+		Public ExStyle As UInteger
+		Public cdit As UShort 'control amount
+		Public x As UShort
+		Public y As UShort
+		Public cx As UShort
+		Public cy As UShort
+		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		Public menuName() As Byte
+	End Structure
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	Public Structure DialogFont
+		Public wPointSize As UShort
+		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		Public FontName() As Byte
+	End Structure
+	<StructLayout(LayoutKind.Sequential)>
+	Public Structure DialogFontEx
+		Public wPointSize As UShort
+		Public Weight As UShort
+		Public Italic As Byte
+		Public CharSet As Byte
+		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		Public FontName() As Byte
+	End Structure
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	Public Structure DialogBoxHeaderEx
+		Public SignEx As UInteger '0xFFFF0001
+		Public Version As UInteger
+		Public Style As UInteger
+		Public ExStyle As UInteger
+		Public DlgItems As UShort 'control amount
+		Public x As UShort
+		Public y As UShort
+		Public cx As UShort
+		Public cy As UShort
+		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		Public menuName() As Byte
+	End Structure
+	'<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	'Public Structure DialogBoxHeader
+	'	Public style As UInteger
+	'	Public dwExtendedStyle As UInteger
+	'	Public cdit As UShort
+	'	Public x As Short
+	'	Public y As Short
+	'	Public cx As Short
+	'	Public cy As Short
+	'End Structure
+	'<StructLayout(LayoutKind.Sequential, Pack:=2)>
+	'Friend Structure DlgItemTemplate
+	'	Public style As UInteger
+	'	Public dwExtendedStyle As UInteger
+	'	Public x As Short
+	'	Public y As Short
+	'	Public cx As Short
+	'	Public cy As Short
+	'	Public id As UShort
+	'	Public exWindowClass As Object
+	'	Public exTitle As Object
+	'	Public exCreationData() As Byte
+	'End Structure
+
+	'<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	'Public Structure DialogBoxHeaderEx
+	'	Public dlgVer As UShort
+	'	Public signature As UShort
+	'	Public helpID As UInteger
+	'	Public exStyle As UInteger
+	'	Public style As UInteger
+	'	Public cDlgItems As UShort
+	'	Public x As Short
+	'	Public y As Short
+	'	Public cx As Short
+	'	Public cy As Short
+	'	Public menu As Object
+	'	Public windowClass As Object
+	'	Public title As String
+	'	Public pointsize As UShort
+	'	Public weight As UShort
+	'	Public italic As Byte
+	'	Public charset As Byte
+	'	<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+	'	Public typeface() As Byte
+	'End Structure
+	'<StructLayout(LayoutKind.Sequential, Pack:=2)>
+	'Friend Structure DlgItemTemplateEx
+	'	Public helpId As UInteger
+	'	Public exStyle As UInteger
+	'	Public style As UInteger
+	'	Public x As Short
+	'	Public y As Short
+	'	Public cx As Short
+	'	Public cy As Short
+	'	Public id As UInteger
+	'	Public windowClass As Object
+	'	Public title As Object
+	'	Public extraCount As UShort
+	'	Public creationData() As Byte
+	'End Structure
+
+
 	'#Enable Warning BC0649
 	Public Enum DialogBoxStyles
 		DS_SETFOREGROUND = &H200
