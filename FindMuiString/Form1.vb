@@ -8,27 +8,12 @@ Public Class Form1
     Private totalTime As Integer
     Private title As String
     Friend Shared MyInstance As Form1
-    Public Enum lpType
-        RT_CURSOR = 1 '由硬件支持的光标资源
-        RT_BITMAP = 2 '位图资源
-        RT_ICON = 3 '由硬件支持的图标资源
-        RT_MENU = 4 '菜单资源
-        RT_DIALOG = 5 '对话框
-        RT_STRING = 6 '字符表入口
-        RT_FONTDIR = 7 '字体目录资源
-        RT_FONT = 8 '字体资源
-        RT_ACCELERATOR = 9 '加速器表
-        RT_MESSAGETABLE = 11 '消息表的入口
-        RT_GROUP_CURSOR = 12 '与硬件无关的光标资源
-        RT_GROUP_ICON = 14 ' 与硬件无关的目标资源
-        RT_VERSION = 16 '版本资源
-        RT_PLUGPLAY = 19 '即插即用资源
-        RT_VXD = 20 'VXD
-        RT_ANICURSOR = 21 '动态光标
-        RT_ANIICON = 22 '动态图标
-        RT_HTML = 23 'HTML文档
-        RT_RCDATA = 10 '原始数据或自定义资源
+    Enum TypeControl
+        typButton = 1
+        typStatic = 2
+        typOther = 2
     End Enum
+
     <DllImport("kernel32", SetLastError:=True)>
     Public Shared Function LoadLibrary(ByVal lpFileName As String) As IntPtr
     End Function
@@ -96,7 +81,7 @@ Public Class Form1
     End Sub
 
     Private Sub BackgroundWorker1_DoWork(sender As Object, er As System.ComponentModel.DoWorkEventArgs) Handles BackgroundWorker1.DoWork
-        Dim arguments As List(Of Object) = TryCast(er.Argument, List(Of Object))
+        Dim arguments As List(Of String) = TryCast(er.Argument, List(Of String))
         Dim folderPath = arguments(0)
         MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.RichTextBox1.Clear()))
         totalTime = 0
@@ -106,9 +91,10 @@ Public Class Form1
             If fileList.Count > 0 Then
                 If Directory.Exists(My.Computer.FileSystem.SpecialDirectories.Temp + "\muifile") = False Then Directory.CreateDirectory(My.Computer.FileSystem.SpecialDirectories.Temp + "\muifile")
                 For Each muifile In fileList
+                    Dim filename = My.Computer.FileSystem.SpecialDirectories.Temp + "\muifile\" + Path.GetFileName(muifile)
                     MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.RichTextBox1.AppendText(Path.GetFileName(muifile) + vbNewLine)))
-                    My.Computer.FileSystem.CopyFile(muifile, My.Computer.FileSystem.SpecialDirectories.Temp + "\muifile\" + Path.GetFileName(muifile), True)
-                    Dim peImages As AsmResolver.PE.IPEImage = AsmResolver.PE.PEImage.FromFile(My.Computer.FileSystem.SpecialDirectories.Temp + "\muifile\" + Path.GetFileName(muifile))
+                    My.Computer.FileSystem.CopyFile(muifile, filename, True)
+                    Dim peImages As AsmResolver.PE.IPEImage = AsmResolver.PE.PEImage.FromFile(filename)
                     For Each entry As IResourceDirectory In peImages.Resources.Entries
                         If entry.IsDirectory Then
                             If entry.Id = 6 Then
@@ -116,7 +102,7 @@ Public Class Form1
                                     'Dim dataEntry As IResourceData = peImages.Resources.GetDirectory(ResourceType.String).GetDirectory(251).GetData(1033)
                                     Dim stringTables As IResourceDirectory = peImages.Resources.Entries.First(Function(e) e.Id = ResourceType.String)
                                     Dim stringEntry As IResourceDirectory = stringTables.Entries.First(Function(e) e.Id = item.Id)
-                                    Dim dataEntry As IResourceData = stringEntry.Entries.First(Function(e) e.Id = GetLangId(My.Computer.FileSystem.SpecialDirectories.Temp + "\muifile\" + Path.GetFileName(muifile)))
+                                    Dim dataEntry As IResourceData = stringEntry.Entries.First(Function(e) e.Id = GetLangId(filename))
                                     Dim content() As Byte = CType(dataEntry.Contents, AsmResolver.DataSegment).Data
                                     Dim stringlist As List(Of String) = GetStringResource(Path.GetFileName(muifile), item.Id, content)
                                     If stringlist.Count > 0 Then
@@ -125,7 +111,17 @@ Public Class Form1
                                     End If
                                 Next
                             ElseIf entry.Id = 5 Then
-
+                                For Each item In entry.Entries
+                                    Dim DialogTables As IResourceDirectory = peImages.Resources.Entries.First(Function(e) e.Id = ResourceType.Dialog)
+                                    Dim DialogEntry As IResourceDirectory = DialogTables.Entries.First(Function(e) e.Id = item.Id)
+                                    Dim dataEntry As IResourceData = DialogEntry.Entries.First(Function(e) e.Id = GetLangId(filename))
+                                    Dim content() As Byte = CType(dataEntry.Contents, AsmResolver.DataSegment).Data
+                                    Dim stringlist As List(Of String) = ParseDialogString(Path.GetFileName(muifile), item.Id, content)
+                                    If stringlist.Count > 0 Then
+                                        MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.RichTextBox1.AppendText(String.Join(vbNewLine, stringlist) + vbNewLine)))
+                                        MyInstance.RichTextBox1.Invoke(New MethodInvoker(Sub() MyInstance.RichTextBox1.ScrollToCaret()))
+                                    End If
+                                Next
                             End If
                         End If
                     Next entry
@@ -171,7 +167,7 @@ Public Class Form1
     Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
         If TextBox1.Text = "" Then Return
         If BackgroundWorker1.IsBusy = False Then
-            Dim arguments As New List(Of Object)
+            Dim arguments = New List(Of String)
             arguments.Add(TextBox1.Text)
             BackgroundWorker1.RunWorkerAsync(arguments)
         End If
@@ -185,27 +181,13 @@ Public Class Form1
     End Sub
     Private Sub Timer1_Tick(sender As Object, e As EventArgs) Handles Timer1.Tick
         On Error Resume Next
-        totalTime = totalTime + 1
+        totalTime += 1
         MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.Text = title + "        " + Format((totalTime Mod 3600) \ 60, "00") & ":" & Format(totalTime Mod 60, "00")))
     End Sub
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         title = Me.Text
         MyInstance = Me
-        Dim peImages = AsmResolver.PE.PEImage.FromFile("shell32.dll.mui")
-
-        For Each entry As IResourceDirectory In peImages.Resources.Entries
-            If entry.IsDirectory Then
-                Debug.Print("Directory {0}.", entry.Id)
-                If entry.Id = 6 Then
-                    For Each item In entry.Entries
-                        Debug.Print("item.Name {0}.", item.Id)
-                    Next
-                End If
-            Else ' if (entry.IsData)
-                Debug.Print("Data {0}.", entry.Owner.Type.ToString)
-            End If
-        Next entry
         RichTextBox1.GetType().GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance Or System.Reflection.BindingFlags.NonPublic).SetValue(RichTextBox1, True, Nothing)
     End Sub
     Private Function GetStringResource(ByVal filename As String, ByVal ResId As Integer, ByVal bytesIn() As Byte) As List(Of String)
@@ -296,9 +278,11 @@ Public Class Form1
         End If
         Return ms.ToArray()
     End Function
-
-    Private Shared Function ParseDialog(ByVal bytesIn() As Byte) As Byte()
-        Dim isDialogEx As Boolean = False
+    Private Shared Function ParseDialogString(ByVal filename As String, ByVal ResId As Integer, ByVal bytesIn() As Byte) As List(Of String)
+        Dim result As New List(Of String)
+        Dim outString As String=""
+        Dim text As String = ""
+        Dim isDialogEx As Boolean
         Dim DlgBoxHeader As Object
 #Region "DlgBoxHeader"
         If Enumerable.SequenceEqual(bytesIn.Take(4).ToArray(), New Byte() {&H1, &H0, &HFF, &HFF}) Then 'Dialog or DialogEx
@@ -308,254 +292,156 @@ Public Class Form1
             isDialogEx = False
             DlgBoxHeader = New DialogBoxHeader()
         End If
-        Dim size As Integer = Marshal.SizeOf(DlgBoxHeader)
-        Dim buff As IntPtr = Marshal.AllocHGlobal(size)
-        Marshal.Copy(bytesIn.Take(size).ToArray(), 0, buff, size)
-        DlgBoxHeader = If(isDialogEx, CType(Marshal.PtrToStructure(buff, GetType(DialogBoxHeaderEx)), DialogBoxHeaderEx), CType(Marshal.PtrToStructure(buff, GetType(DialogBoxHeader)), DialogBoxHeader))
-        If DlgBoxHeader.ExStyle <> 0 Then
-            Console.WriteLine("0x" & DlgBoxHeader.ExStyle.ToString("x8"))
-        End If
-        bytesIn = bytesIn.Skip(size).ToArray()
-        '			#End Region
-        '			#Region "MenuName"
-        Dim bClassName() As Byte = Nothing
-        Dim bMenuName() As Byte = DlgBoxHeader.menuName
-        If BitConverter.ToInt16(bMenuName.Take(2).ToArray(), 0) = -1 Then
-            bClassName = bytesIn
-        ElseIf BitConverter.ToInt16(bMenuName.Take(2).ToArray(), 0) <> 0 Then
-            Dim len = GetUnicodeStringLength(bytesIn)
-            Dim szMenuName = Encoding.Unicode.GetString(bytesIn, 0, len)
-            Console.WriteLine("MenuName:" & szMenuName)
-            bClassName = bytesIn.Skip(len).ToArray()
-        Else
-            bClassName = bytesIn
-        End If
+        Try
+            Dim size As Integer = Marshal.SizeOf(DlgBoxHeader)
+            Dim buff As IntPtr = Marshal.AllocHGlobal(size)
+            Marshal.Copy(bytesIn.Take(size).ToArray(), 0, buff, size)
+            DlgBoxHeader = If(isDialogEx, CType(Marshal.PtrToStructure(buff, GetType(DialogBoxHeaderEx)), DialogBoxHeaderEx), CType(Marshal.PtrToStructure(buff, GetType(DialogBoxHeader)), DialogBoxHeader))
+            If DlgBoxHeader.ExStyle <> 0 Then
+                Debug.Print("0x" & Integer.Parse(DlgBoxHeader.ExStyle).ToString("X8"))
+            End If
+            bytesIn = bytesIn.Skip(size).ToArray()
+#End Region
+#Region "MenuName"
+            Dim bClassName() As Byte
+            Dim bMenuName() As Byte = DlgBoxHeader.menuName
+            If bMenuName(0) = &HFF And bMenuName(1) = &HFF Then
+                bClassName = bytesIn
+            ElseIf BitConverter.ToInt16(bMenuName.Take(2).ToArray(), 0) <> 0 Then
+                Dim len = GetUnicodeString(bytesIn, outString)
+                Debug.Print("MenuName:" & outString)
+                bClassName = bytesIn.Skip(len).ToArray()
+            Else
+                bClassName = bytesIn
+            End If
 #End Region
 #Region "ClassName"
-        Dim bCaption() As Byte = Nothing
-        If BitConverter.ToInt16(bClassName.Take(2).ToArray(), 0) = -1 Then
-            bCaption = bClassName.Skip(2).ToArray()
-        ElseIf BitConverter.ToInt16(bClassName.Take(2).ToArray(), 0) <> 0 Then
-            Dim len = GetUnicodeStringLength(bClassName)
-            Dim szClassName = Encoding.Unicode.GetString(bClassName, 0, len)
-            Console.WriteLine("ClassName:" & szClassName)
-            bCaption = bClassName.Skip(len + 2).ToArray()
-        Else
-            bCaption = bClassName.Skip(2).ToArray()
-        End If
+            Dim bCaption() As Byte
+            If bClassName(0) = &HFF And bClassName(1) = &HFF Then
+                bCaption = bClassName.Skip(2).ToArray()
+            ElseIf BitConverter.ToInt16(bClassName.Take(2).ToArray(), 0) <> 0 Then
+                Dim len = GetUnicodeString(bClassName, outString)
+                Dim szClassName = Encoding.Unicode.GetString(bClassName, 0, len)
+                Debug.Print("ClassName:" & outString)
+                bCaption = bClassName.Skip(len + 2).ToArray()
+            Else
+                bCaption = bClassName.Skip(2).ToArray()
+            End If
 #End Region
 #Region "Caption"
-        Dim bItemData() As Byte = Nothing
-        If BitConverter.ToInt16(bCaption.Take(2).ToArray(), 0) <> 0 Then
-            Dim len = GetUnicodeStringLength(bCaption)
-            Dim szCaption = Encoding.Unicode.GetString(bCaption, 0, len)
-            Console.WriteLine("Caption:" & szCaption)
-            bItemData = bCaption.Skip(len + 2).ToArray()
-        Else
-            bItemData = bCaption.Skip(2).ToArray()
-        End If
+            Dim bItemData() As Byte
+            If BitConverter.ToInt16(bCaption.Take(2).ToArray(), 0) <> 0 Then
+                Dim len = GetUnicodeString(bCaption, outString)
+                text = "[" + filename + "]" + ResId.ToString + ">>" + outString + "->"
+                bItemData = bCaption.Skip(len + 2).ToArray()
+            Else
+                bItemData = bCaption.Skip(2).ToArray()
+            End If
 #End Region
 #Region "DialogFont"
-        If (DlgBoxHeader.Style And CUInt(Math.Truncate(DialogBoxStyles.DS_SETFONT))) <> 0 Then 'if have font
-            Dim DlgFont As New DialogFontEx()
-            size = Marshal.SizeOf(DlgFont)
-            buff = Marshal.AllocHGlobal(size)
-            Marshal.Copy(bItemData.Take(size).ToArray(), 0, buff, size)
-            DlgFont = CType(Marshal.PtrToStructure(buff, GetType(DialogFontEx)), DialogFontEx)
-            If BitConverter.ToInt16(DlgFont.FontName.Take(2).ToArray(), 0) <> 0 Then
-                bItemData = bItemData.Skip(size - 2).ToArray()
-                Dim len = GetUnicodeStringLength(bItemData)
-                Dim szFontName = Encoding.Unicode.GetString(bItemData, 0, len)
-                Console.WriteLine("FontName:" & szFontName)
-                bItemData = bItemData.Skip(len).ToArray()
+            If (DlgBoxHeader.Style And CUInt(DialogBoxStyles.DS_SETFONT)) <> 0 Then 'if have font
+                Dim DlgFont As New DialogFontEx()
+                size = Marshal.SizeOf(DlgFont)
+                buff = Marshal.AllocHGlobal(size)
+                Marshal.Copy(bItemData.Take(size).ToArray(), 0, buff, size)
+                DlgFont = CType(Marshal.PtrToStructure(buff, GetType(DialogFontEx)), DialogFontEx)
+                If BitConverter.ToInt16(DlgFont.FontName.Take(2).ToArray(), 0) <> 0 Then
+                    bItemData = bItemData.Skip(size - 2).ToArray()
+                    Dim len = GetUnicodeString(bItemData, outString)
+                    Debug.Print("FontName:" & outString)
+                    bItemData = bItemData.Skip(len).ToArray()
+                End If
             End If
-        End If
 #End Region
 #Region "ControlList"
-        Dim isControl As Integer = 0
-        bItemData = bItemData.Skip(4).ToArray()
-        For i As Integer = 0 To DlgBoxHeader.DlgItems - 1
-            Dim ctlData As New ControlData()
-            size = Marshal.SizeOf(ctlData)
-            buff = Marshal.AllocHGlobal(size)
-            Dim helpID As UInteger = 0
-            If isDialogEx Then
-                helpID = CUInt(BitConverter.ToInt16(bItemData.Take(2).ToArray(), 0))
-                Marshal.Copy(bItemData.Skip(2).Take(size).ToArray(), 0, buff, size)
-            Else
-                Marshal.Copy(bItemData.Take(size).ToArray(), 0, buff, size)
-            End If
-            ctlData = CType(Marshal.PtrToStructure(buff, GetType(ControlData)), ControlData)
-            Console.WriteLine("IDC_" & ctlData.id.ToString())
-            Console.WriteLine(ctlData.x.ToString() & "," & ctlData.y.ToString() & "," & ctlData.cx.ToString() & "," & ctlData.cy.ToString())
-            Dim Style = If(isDialogEx, ctlData.ExStyle, ctlData.Style)
-            Dim ExStyle = If(isDialogEx, ctlData.Style, ctlData.ExStyle)
-            Dim bClassID() As Byte = bItemData.Skip(size).ToArray() 'move to id in struct
-            If isDialogEx Then
-                bClassID = bClassID.Skip(2).ToArray()
-            End If
-            Dim NotStyle As UInteger = 0
-#Region "ControlStyle"
-            Dim bCtlName() As Byte = Nothing
-            If BitConverter.ToInt16(bClassID.Take(2).ToArray(), 0) = -1 Then
-                Select Case bClassID(2)
-                    Case &H80
-                        Select Case Style And &HF
-                            Case CUInt(Math.Truncate(WindowStyles.BS_PUSHBUTTON))
-                                Console.WriteLine("PUSHBUTTON")
-                                NotStyle = CUInt(WindowStyles.BS_PUSHBUTTON Or WindowStyles.WS_TABSTOP)
-                            Case CUInt(Math.Truncate(WindowStyles.BS_DEFPUSHBUTTON))
-                                Console.WriteLine("DEFPUSHBUTTON")
-                                NotStyle = CUInt(WindowStyles.BS_DEFPUSHBUTTON Or WindowStyles.WS_TABSTOP)
-                            Case CUInt(Math.Truncate(WindowStyles.BS_CHECKBOX))
-                                Console.WriteLine("CHECKBOX")
-                                NotStyle = CUInt(WindowStyles.BS_CHECKBOX Or WindowStyles.WS_TABSTOP)
-                            Case CUInt(Math.Truncate(WindowStyles.BS_AUTOCHECKBOX))
-                                Console.WriteLine("AUTOCHECKBOX")
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.BS_AUTOCHECKBOX))
-                            Case CUInt(Math.Truncate(WindowStyles.BS_RADIOBUTTON))
-                                Console.WriteLine("RADIOBUTTON")
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.BS_RADIOBUTTON))
-                            Case CUInt(Math.Truncate(WindowStyles.BS_3STATE))
-                                Console.WriteLine("STATE3" & vbTab)
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.BS_3STATE))
-                            Case CUInt(Math.Truncate(WindowStyles.BS_AUTO3STATE))
-                                Console.WriteLine("AUTO3STATE")
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.BS_AUTO3STATE))
-                            Case CUInt(Math.Truncate(WindowStyles.BS_GROUPBOX))
-                                Console.WriteLine("GROUPBOX")
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.BS_GROUPBOX))
-                            Case CUInt(Math.Truncate(WindowStyles.BS_AUTORADIOBUTTON))
-                                Console.WriteLine("AUTORADIOBUTTON")
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.BS_AUTORADIOBUTTON))
-                            Case Else
-                                Console.WriteLine("CONTROL" & vbTab)
-                                NotStyle = 0
-                                isControl = 1
-                        End Select
-                    Case &H81
-                        Console.WriteLine("EDITTEXT")
-                        NotStyle = CUInt(WindowStyles.ES_LEFT Or WindowStyles.WS_BORDER Or WindowStyles.WS_TABSTOP)
-                    Case &H82
-                        Select Case Style And &HF
-                            Case CUInt(Math.Truncate(WindowStyles.SS_LEFT))
-                                Console.WriteLine("LTEXT" & vbTab)
-                                NotStyle = CUInt(WindowStyles.SS_LEFT Or WindowStyles.WS_GROUP)
-                            Case CUInt(Math.Truncate(WindowStyles.SS_RIGHT))
-                                Console.WriteLine("RTEXT" & vbTab)
-                                NotStyle = CUInt(WindowStyles.SS_RIGHT Or WindowStyles.WS_GROUP)
-                            Case CUInt(Math.Truncate(WindowStyles.SS_CENTER))
-                                Console.WriteLine("CTEXT" & vbTab)
-                                NotStyle = CUInt(WindowStyles.SS_CENTER Or WindowStyles.WS_GROUP)
-                            Case CUInt(Math.Truncate(WindowStyles.SS_ICON))
-                                Console.WriteLine("ICON" & vbTab)
-                                NotStyle = CUInt(Math.Truncate(WindowStyles.SS_ICON))
-                            Case Else
-                                Console.WriteLine("CONTROL" & vbTab)
-                                NotStyle = 0
-                                isControl = 2
-                        End Select
-                    Case &H83
-                        Console.WriteLine("LISTBOX" & vbTab)
-                        NotStyle = CUInt(WindowStyles.WS_BORDER Or WindowStyles.LBS_NOTIFY)
-                    Case &H84
-                        Console.WriteLine("SCROLLBAR")
-                        NotStyle = 0
-                    Case &H85
-                        Console.WriteLine("COMBOBOX")
-                        NotStyle = 0
-                    Case Else
-                        Console.WriteLine("CONTROL" & vbTab)
-                        NotStyle = 0
-                        isControl = -2
-                End Select
-                bCtlName = bClassID.Skip(4).ToArray()
-            Else
-                Dim len = GetUnicodeStringLength(bClassID)
-                Dim szCtlName = Encoding.Unicode.GetString(bClassID, 0, len)
-                Console.WriteLine("CtlName:" & szCtlName)
-                bCtlName = bClassID.Skip(len + 2).ToArray()
-            End If
-#End Region
-            NotStyle = NotStyle Or CUInt(Math.Truncate(WindowStyles.WS_CHILD)) Or CUInt(Math.Truncate(WindowStyles.WS_VISIBLE))
-            Style = Style And Not NotStyle
-            NotStyle = NotStyle And Not (If(isDialogEx, ctlData.ExStyle, ctlData.Style))
-#Region "ControlName"
-            Dim bCtlId() As Byte = Nothing
-            If BitConverter.ToInt16(bCtlName.Take(2).ToArray(), 0) = -1 Then
-                bCtlId = bCtlName.Skip(6).ToArray()
-            Else
-                If isControl = 0 AndAlso (bClassID(1) = &H81 OrElse bClassID(1) = &H83 OrElse bClassID(1) = &H84 OrElse bClassID(1) = &H85) Then
-                    bCtlId = bCtlName.Skip(2).ToArray()
+            Dim isControl As Integer = 0
+            bItemData = bItemData.Skip(4).ToArray()
+            For i As Integer = 0 To DlgBoxHeader.DlgItems - 1
+                Dim ctlData As New ControlData()
+                size = Marshal.SizeOf(ctlData)
+                buff = Marshal.AllocHGlobal(size)
+                Dim helpID As Integer = 0
+                If isDialogEx Then
+                    helpID = CInt(BitConverter.ToInt16(bItemData.Take(2).ToArray(), 0))
+                    Marshal.Copy(bItemData.Skip(2).Take(size).ToArray(), 0, buff, size)
                 Else
-                    Dim len = GetUnicodeStringLength(bCtlName)
-                    Dim szCtlId = Encoding.Unicode.GetString(bCtlName, 0, len)
-                    Console.WriteLine("CtlId:" & szCtlId)
-                    If len > 2 Then
-                        bCtlId = bCtlName.Skip(len + 4).ToArray()
-                    Else
-                        bCtlId = bCtlName.Skip(2).ToArray()
-                    End If
+                    Marshal.Copy(bItemData.Take(size).ToArray(), 0, buff, size)
                 End If
-            End If
-#End Region
-
-            Dim pStyle() As String = {"", "button", "static"}
-            If isControl <> 0 Then
-                If isControl = -1 Then
-                    Console.WriteLine(BitConverter.ToInt16(bCtlName.Take(2).ToArray(), 0).ToString())
-                ElseIf isControl > 0 Then
-                    Console.WriteLine(pStyle(isControl))
+                ctlData = CType(Marshal.PtrToStructure(buff, GetType(ControlData)), ControlData)
+                Dim bClassID() As Byte = bItemData.Skip(size).ToArray()
+                If isDialogEx Then
+                    bClassID = bClassID.Skip(6).ToArray()
+                End If
+                If bClassID(0) = &HFF And bClassID(1) = &HFF Then
+                    bClassID = bClassID.Skip(2).ToArray()
+                End If
+                Dim bCtlName() As Byte
+                If bClassID(0) = &HFF And bClassID(1) = &HFF Then
+                    bCtlName = bClassID.Skip(4).ToArray()
                 Else
-                    Console.WriteLine(bClassID(0).ToString())
-                End If
-                If Convert.ToInt32(Style) <> 0 OrElse NotStyle = 0 Then
-                    Console.WriteLine("0x" & Style.ToString("x8"))
-                End If
-                If NotStyle <> 0 Then
-                    Console.WriteLine("0x" & NotStyle.ToString("x8"))
-                End If
-                NotStyle = 0
-                Style = NotStyle
-            End If
+                    Dim len = GetUnicodeString(bClassID, outString)
+                    If len = 0 Then
+                        result.Add(text + ctlData.id.ToString() + ":""""")
+                        bCtlName = bClassID
+                    ElseIf len = 2 Then
+                        result.Add(text + ctlData.id.ToString() + ":" + BitConverter.ToInt16(bClassID.Take(2).ToArray(), 0).ToString)
+                        bCtlName = bClassID.Skip(len).ToArray()
+                    Else
+                        result.Add(text + ctlData.id.ToString() + ":" + outString)
+                        bCtlName = bClassID.Skip(len + 2).ToArray()
+                    End If
 
-            If Style <> 0 OrElse NotStyle <> 0 OrElse ExStyle <> 0 OrElse (isDialogEx AndAlso helpID <> 0) Then
-                If Style <> 0 OrElse ((Not NotStyle) <> 0 AndAlso (Not isControl) <> 0) Then
-                    Console.WriteLine("0x" & Style.ToString("x8"))
-                End If
-                If NotStyle <> 0 Then
-                    If Style <> 0 Then
-                        Console.WriteLine(" |0x" & NotStyle.ToString("x8"))
-                    Else
-                        Console.WriteLine(",0x" & NotStyle.ToString("x8"))
                     End If
+                    bItemData = bCtlName.Skip(4).ToArray()
+                If isDialogEx Then
+                    bItemData = bItemData.Skip(2).ToArray()
                 End If
-                If ExStyle <> 0 OrElse (isDialogEx AndAlso helpID <> 0) Then
-                    If ExStyle = CUInt(Math.Truncate(WindowExStyles.WS_EX_STATICEDGE)) Then
-                        Console.WriteLine(", WS_EX_STATICEDGE")
-                    Else
-                        Console.WriteLine("0x" & ExStyle.ToString("x8"))
-                    End If
-                    If isDialogEx AndAlso helpID <> 0 Then
-                        Console.WriteLine(ctlData.id.ToString())
-                    End If
-                End If
-            End If
-            bItemData = bCtlId.Skip(2).ToArray()
-            If isDialogEx Then
-                bItemData = bItemData.Skip(2).ToArray()
-            End If
-        Next i
+            Next i
+        Catch ex As Exception
+
+        End Try
+
 #End Region
-        Return bytesIn
+        Return result
+    End Function
+    Private Shared Function GetUnicodeString(ByVal bytesIn() As Byte, ByRef outString As String) As Integer
+        Dim result As New List(Of String)
+        Dim len As Integer = 0
+        outString = ""
+        Using ms As New MemoryStream()
+            Using writer As New BinaryWriter(ms)
+                If bytesIn.Length > 0 Then
+                    Dim OldBinary() As Char = Encoding.Unicode.GetString(bytesIn).ToCharArray()
+                    For index As Integer = 0 To bytesIn.Length
+                        If AscW(OldBinary(index)) <> 0 Then
+                            writer.Write(OldBinary(index))
+                            'index += 1
+                        Else
+                            Exit For
+                        End If
+                    Next
+                    ms.Position = 0
+                End If
+                If ms IsNot Nothing AndAlso ms.Length > 0 Then
+                    Dim reader As New BinaryReader(ms)
+                    len = ms.Length
+                    Do While ms.Position < ms.Length
+                        Dim buff() As Char = reader.ReadChars(ms.Length)
+                        outString = New String(buff)
+                    Loop
+                End If
+            End Using
+        End Using
+        Return outString.Length * 2
     End Function
 
-    Private Shared Function GetUnicodeStringLength(ByVal byteIn() As Byte) As Integer
-        Dim nullterm As Integer = 0
-        Do While nullterm < byteIn.Length AndAlso byteIn(nullterm) <> 0
-            nullterm += 2
-        Loop
-        Return nullterm
-    End Function
+
+    'Private Shared Function GetUnicodeStringLength(ByVal byteIn() As Byte) As Integer
+    '    Dim nullterm As Integer = 0
+    '    Do While nullterm < byteIn.Length AndAlso byteIn(nullterm) <> 0
+    '        nullterm += 2
+    '    Loop
+    '    Return nullterm
+    'End Function
 
 End Class

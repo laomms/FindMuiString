@@ -1,8 +1,30 @@
 ﻿Imports System.Runtime.InteropServices
 
 Module Module1
-#Disable Warning BC0649
-    Public Structure ControlData
+
+	Public Enum LpType
+		RT_CURSOR = 1 '由硬件支持的光标资源
+		RT_BITMAP = 2 '位图资源
+		RT_ICON = 3 '由硬件支持的图标资源
+		RT_MENU = 4 '菜单资源
+		RT_DIALOG = 5 '对话框
+		RT_STRING = 6 '字符表入口
+		RT_FONTDIR = 7 '字体目录资源
+		RT_FONT = 8 '字体资源
+		RT_ACCELERATOR = 9 '加速器表
+		RT_MESSAGETABLE = 11 '消息表的入口
+		RT_GROUP_CURSOR = 12 '与硬件无关的光标资源
+		RT_GROUP_ICON = 14 ' 与硬件无关的目标资源
+		RT_VERSION = 16 '版本资源
+		RT_PLUGPLAY = 19 '即插即用资源
+		RT_VXD = 20 'VXD
+		RT_ANICURSOR = 21 '动态光标
+		RT_ANIICON = 22 '动态图标
+		RT_HTML = 23 'HTML文档
+		RT_RCDATA = 10 '原始数据或自定义资源
+	End Enum
+	'#Disable Warning BC0649
+	Public Structure ControlData
         Public Style As UInteger
         Public ExStyle As UInteger
         Public x As UShort
@@ -52,7 +74,7 @@ Module Module1
         <MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
         Public FontName() As Byte
     End Structure
-#Enable Warning BC0649
+	'#Enable Warning BC0649
 	Public Enum DialogBoxStyles
 		DS_SETFOREGROUND = &H200
 		DS_NOFAILCREATE = &H10
