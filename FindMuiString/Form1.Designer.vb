@@ -46,7 +46,7 @@ Partial Class Form1
         Me.TextBox1.Name = "TextBox1"
         Me.TextBox1.Size = New System.Drawing.Size(349, 21)
         Me.TextBox1.TabIndex = 0
-        Me.TextBox1.Text = "D:\VB.NET\FindMuiString\FindMuiString\bin\Debug"
+        Me.TextBox1.Text = "C:\Windows\System32\zh-CN"
         '
         'Button1
         '

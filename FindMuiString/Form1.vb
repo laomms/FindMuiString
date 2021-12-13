@@ -310,7 +310,7 @@ Public Class Form1
                 bClassName = bMenuName.Skip(2).ToArray
             Else
                 len = GetUnicodeString(bMenuName, outString)
-                bClassName = bMenuName.Skip(len).ToArray()
+                bClassName = bMenuName.Skip(len + 2).ToArray()
             End If
 #End Region
 #Region "是否有窗口类ClassName"
