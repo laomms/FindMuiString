@@ -280,9 +280,9 @@ Public Class Form1
     End Function
     Private Shared Function ParseDialogString(ByVal filename As String, ByVal ResId As Integer, ByVal bytesIn() As Byte) As List(Of String)
         Dim result As New List(Of String)
-        Dim outString As String=""
+        Dim outString As String = ""
         Dim text As String = ""
-        Dim len As Integer = 0
+        Dim len As Integer
         Dim isDialogEx As Boolean
         Dim DlgBoxHeader As Object
 #Region "DlgBoxHeader"
@@ -299,81 +299,79 @@ Public Class Form1
             Marshal.Copy(bytesIn.Take(size).ToArray(), 0, buff, size)
             DlgBoxHeader = If(isDialogEx, CType(Marshal.PtrToStructure(buff, GetType(DialogBoxHeaderEx)), DialogBoxHeaderEx), CType(Marshal.PtrToStructure(buff, GetType(DialogBoxHeader)), DialogBoxHeader))
             Marshal.FreeHGlobal(buff)
-            If DlgBoxHeader.ExStyle <> 0 Then
-                'Debug.Print("0x" & Integer.Parse(DlgBoxHeader.ExStyle).ToString("X8"))
-            End If
-            bytesIn = bytesIn.Skip(size).ToArray()
+
 #End Region
 #Region "是否有菜单MenuName"
+            Dim bMenuName = bytesIn.Skip(size).ToArray()
             Dim bClassName() As Byte
-            Dim bMenuName() As Byte = DlgBoxHeader.menuName
             If bMenuName(0) = &HFF And bMenuName(1) = &HFF Then
-                bClassName = bytesIn
+                bClassName = bMenuName.Skip(2).ToArray
+            ElseIf bMenuName(0) = 0 And bMenuName(1) = 0 Then
+                bClassName = bMenuName.Skip(2).ToArray
             Else
-                len = GetUnicodeString(bytesIn, outString)
-                'Debug.Print("MenuName:" & outString)
-                bClassName = bytesIn.Skip(len).ToArray()
+                len = GetUnicodeString(bMenuName, outString)
+                bClassName = bMenuName.Skip(len).ToArray()
             End If
 #End Region
 #Region "是否有窗口类ClassName"
             Dim bCaption() As Byte
             If bClassName(0) = &HFF And bClassName(1) = &HFF Then
                 bCaption = bClassName.Skip(2).ToArray()
+            ElseIf bClassName(0) = 0 And bClassName(1) = 0 Then
+                bCaption = bClassName.Skip(2).ToArray()
             Else
                 len = GetUnicodeString(bClassName, outString)
                 Dim szClassName = Encoding.Unicode.GetString(bClassName, 0, len)
-                'Debug.Print("ClassName:" & outString)
                 bCaption = bClassName.Skip(len + 2).ToArray()
             End If
 #End Region
 #Region "窗口标题Caption"
-            Dim bItemData() As Byte
+            Dim bFontData() As Byte
             If bCaption(0) = &HFF And bCaption(1) = &HFF Then
-                bItemData = bCaption.Skip(2).ToArray()
+                bFontData = bCaption.Skip(2).ToArray()
             Else
                 len = GetUnicodeString(bCaption, outString)
                 text = "[" + filename + "]" + ResId.ToString + ">>" + outString + "->"
-                bItemData = bCaption.Skip(len + 2).ToArray()
+                bFontData = bCaption.Skip(len + 2).ToArray()
             End If
 #End Region
 #Region "窗口字体DialogFont"
-
             Dim DlgFont As Object
-                If isDialogEx Then
-                    DlgFont = New DialogFontEx()
-                Else
-                    DlgFont = New DialogFont()
-                End If
-                size = Marshal.SizeOf(DlgFont)
-                buff = Marshal.AllocHGlobal(size)
-                Marshal.Copy(bItemData.Take(size).ToArray(), 0, buff, size)
-                If isDialogEx Then
-                    DlgFont = CType(Marshal.PtrToStructure(buff, GetType(DialogFontEx)), DialogFontEx)
-                Else
-                    DlgFont = CType(Marshal.PtrToStructure(buff, GetType(DialogFont)), DialogFont)
-                End If
-                Marshal.FreeHGlobal(buff)
-                bItemData = bItemData.Skip(size - 2).ToArray
-                If bItemData(0) = &HFF And bItemData(1) = &HFF Then
-                    bItemData = bItemData.Skip(2).ToArray
-                Else
-                    len = GetUnicodeString(bItemData, outString)
-                    'Debug.Print("FontName:" & outString)
-                    bItemData = bItemData.Skip(len).ToArray()
-                End If
-
+            If isDialogEx Then
+                DlgFont = New DialogFontEx()
+            Else
+                DlgFont = New DialogFont()
+            End If
+            size = Marshal.SizeOf(DlgFont)
+            buff = Marshal.AllocHGlobal(size)
+            Marshal.Copy(bFontData.Take(size).ToArray(), 0, buff, size)
+            If isDialogEx Then
+                DlgFont = CType(Marshal.PtrToStructure(buff, GetType(DialogFontEx)), DialogFontEx)
+            Else
+                DlgFont = CType(Marshal.PtrToStructure(buff, GetType(DialogFont)), DialogFont)
+            End If
+            Marshal.FreeHGlobal(buff)
+            bFontData = bFontData.Skip(size).ToArray
+            If bFontData(0) = &HFF And bFontData(1) = &HFF Then
+                bFontData = bFontData.Skip(2).ToArray
+            Else
+                len = GetUnicodeString(bFontData, outString)
+                bFontData = bFontData.Skip(len).ToArray()
+            End If
 #End Region
 #Region "ControlList"
-            Dim isControl As Integer = 0
-            Dim helpID As Integer = 0
             Dim ctlData As Object
             If isDialogEx Then
                 ctlData = New ControlDataEx()
             Else
                 ctlData = New ControlData()
             End If
-            bItemData = bItemData.Skip(2).ToArray()
+            Dim bItemData() As Byte = bFontData.Skip(2).ToArray()
+            'bItemData = (bItemData.Length - bytesIn.Length + 3) / 4 * 4 + bItemData
             For i As Integer = 0 To DlgBoxHeader.DlgItems - 1
+                len = (bytesIn.Length - bItemData.Length + 3) \ 4
+                bItemData = bytesIn.Skip(len * 4).ToArray
+
                 size = Marshal.SizeOf(ctlData)
                 buff = Marshal.AllocHGlobal(size)
                 Marshal.Copy(bItemData.Take(size).ToArray(), 0, buff, size)
@@ -382,97 +380,48 @@ Public Class Form1
                 Else
                     ctlData = CType(Marshal.PtrToStructure(buff, GetType(ControlData)), ControlData)
                 End If
-                Debug.Print("helpID:0x" + helpID.ToString("x8"))
-                Debug.Print("Constol ID:" + ctlData.id.ToString)
-                helpID = ctlData.helpId
                 Marshal.FreeHGlobal(buff)
+                'Debug.Print("Constol ID:" + ctlData.id.ToString)
+                'Dim Style = If(isDialogEx, ctlData.Style, ctlData.ExStyle)
+                'Dim styleValue = Style And &HF
+                'Debug.Print("style:0x" + CInt(ctlData.style).ToString("x8") + " exstyle:0x" + CInt(ctlData.exstyle).ToString("x8") + " style value:" + styleValue.ToString)
                 Dim bClassID() As Byte = bItemData.Skip(size + 2).ToArray()
                 If bClassID(0) = &HFF And bClassID(1) = &HFF Then '控件类型
                     bClassID = bClassID.Skip(2).ToArray()
                 End If
-
-                If bClassID(0) = &H80 Then 'other
+                If bClassID(0) = &H80 And bClassID(1) = 0 Then
+                    Debug.Print("Button")
+                ElseIf bClassID(0) = &H81 And bClassID(1) = 0 Then
+                    Debug.Print("EditText")
+                ElseIf bClassID(0) = &H82 And bClassID(1) = 0 Then
+                    Debug.Print("Static")
+                ElseIf bClassID(0) = &H83 And bClassID(1) = 0 Then
+                    Debug.Print("ListBox")
+                ElseIf bClassID(0) = &H84 And bClassID(1) = 0 Then
+                    Debug.Print("ScrollBar")
+                ElseIf bClassID(0) = &H85 And bClassID(1) = 0 Then
+                    Debug.Print("ComboBox")
+                ElseIf bClassID(0) <> 0 Then '其他控件
+                    len = GetUnicodeString(bClassID, outString)
+                    Debug.Print(outString)
+                    bClassID = bClassID.Skip(len).ToArray()
+                End If
+                bClassID = bClassID.Skip(2).ToArray()
+                If bClassID(0) = &HFF And bClassID(1) = &HFF Then
                     bClassID = bClassID.Skip(2).ToArray()
                     len = GetUnicodeString(bClassID, outString)
                     result.Add(text + ctlData.id.ToString() + ":" + outString)
                     Debug.Print(text + ctlData.id.ToString() + ":" + outString)
                     bClassID = bClassID.Skip(len).ToArray()
-                    Dim style = ctlData.style And &HF
-                    If style = 1 Or style = 0 Then
-                        bItemData = bClassID.Skip(4).ToArray()
-                    Else
-                        bItemData = bClassID.Skip(6).ToArray()
-                    End If
-                    Debug.Print("Button->style:0x" + CInt(ctlData.style).ToString("x8") + " exstyle:0x" + CInt(ctlData.exstyle).ToString("x8") + " style value:" + style.ToString)
-                ElseIf bClassID(0) = &H81 Then 'edittext
-                    Debug.Print("EditText")
-                ElseIf bClassID(0) = &H82 Then 'static
-                    Debug.Print("Static")
-                    bClassID = bClassID.Skip(2).ToArray()
-                    If bClassID(0) = &HFF And bClassID(1) = &HFF Then
-                        bClassID = bClassID.Skip(2).ToArray()
-                        len = GetUnicodeString(bClassID, outString)
-                        result.Add(text + ctlData.id.ToString() + ":" + BitConverter.ToInt16(bClassID.Take(2).ToArray(), 0).ToString)
-                        Debug.Print(text + ctlData.id.ToString() + ":" + BitConverter.ToInt16(bClassID.Take(2).ToArray(), 0).ToString)
-                        bClassID = bClassID.Skip(len).ToArray()
-                        bItemData = bClassID.Skip(4).ToArray()
-                    Else
-                        len = GetUnicodeString(bClassID, outString)
-                        result.Add(text + ctlData.id.ToString() + ":" + outString)
-                        Debug.Print(text + ctlData.id.ToString() + ":" + outString)
-                        bClassID = bClassID.Skip(len).ToArray()
-                        bItemData = bClassID.Skip(6).ToArray()
-                    End If
-                ElseIf bClassID(0) = &H83 Then 'listbox
-                    Debug.Print("ListBox")
-                ElseIf bClassID(0) = &H84 Then 'scrollbar
-                    Debug.Print("ScrollBar")
-                ElseIf bClassID(0) = &H85 Then 'COMBOBOX
-                    Debug.Print("ComboBox")
-                    bClassID = bClassID.Skip(2).ToArray()
-                    len = GetUnicodeString(bClassID, outString)
-                    result.Add(text + ctlData.id.ToString() + ":(空)")
-                    Debug.Print(text + ctlData.id.ToString() + ":(空)")
-                    bClassID = bClassID.Skip(len).ToArray()
-                    bItemData = bClassID.Skip(4).ToArray()
-                ElseIf bClassID(0) = 0 Then '
-                    Debug.Print("UnKnown")
-                    bClassID = bClassID.Skip(2).ToArray()
                 Else
-                    Debug.Print("Other")
+                    len = GetUnicodeString(bClassID, outString)
+                    result.Add(text + ctlData.id.ToString() + ":" + outString)
+                    Debug.Print(text + ctlData.id.ToString() + ":" + outString)
+                    bClassID = bClassID.Skip(len).ToArray()
                 End If
-
-                'Dim bCtlName() As Byte
-                ''是否有窗口类windowClass
-                'If bClassID(0) = &HFF And bClassID(1) = &HFF Then
-                '    bCtlName = bClassID.Skip(4).ToArray()
-                'Else
-                '    len = GetUnicodeString(bClassID, outString)
-                '    If len = 0 Then
-                '        result.Add(text + ctlData.id.ToString() + ":(空)")
-                '        Debug.Print("(空)")
-                '        bCtlName = bClassID
-                '    ElseIf len = 2 Then
-                '        result.Add(text + ctlData.id.ToString() + ":" + BitConverter.ToInt16(bClassID.Take(2).ToArray(), 0).ToString)
-                '        Debug.Print(BitConverter.ToInt16(bClassID.Take(2).ToArray(), 0).ToString)
-                '        bCtlName = bClassID.Skip(len).ToArray()
-                '    Else
-                '        result.Add(text + ctlData.id.ToString() + ":" + outString)
-                '        Debug.Print(outString)
-                '        bCtlName = bClassID.Skip(len + 2).ToArray()
-                '    End If
-                'End If
+                bClassID = bClassID.Skip(2).ToArray
                 Debug.Print(vbNewLine)
-                ''Dim lastIndex As Integer = Array.FindIndex(bCtlName, Function(b) b <> 0)
-                'If len > 0 Then
-                '    If isDialogEx And helpID <> 0 Then
-                '        bItemData = bCtlName.Skip(6).ToArray()
-                '    ElseIf isDialogEx Then
-                '        bItemData = bCtlName.Skip(4).ToArray()
-                '    End If
-                'Else
-                '    bItemData = bCtlName.Skip(2).ToArray()
-                'End If
+                If isDialogEx Then bItemData = bClassID.Skip(2).ToArray
             Next i
         Catch ex As Exception
 

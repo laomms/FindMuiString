@@ -24,67 +24,59 @@ Module Module1
 		RT_RCDATA = 10 '原始数据或自定义资源
 	End Enum
 	'#Disable Warning BC0649
-	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
 	Public Structure ControlData
-		Public Style As UInteger
-		Public ExStyle As UInteger
-		Public x As UShort
-		Public y As UShort
-		Public cx As UShort
-		Public cy As UShort
-		Public id As UShort
+		Public Style As Integer
+		Public ExStyle As Integer
+		Public x As Short
+		Public y As Short
+		Public cx As Short
+		Public cy As Short
+		Public id As Short
 	End Structure
 	<StructLayout(LayoutKind.Sequential, Pack:=2)>
 	Friend Structure ControlDataEx
-		Public helpId As UInteger
-		Public exStyle As UInteger
-		Public style As UInteger
-		Public x As UShort
-		Public y As UShort
-		Public cx As UShort
-		Public cy As UShort
-		Public id As UShort
+		Public helpId As Integer
+		Public exStyle As Integer
+		Public style As Integer
+		Public x As Short
+		Public y As Short
+		Public cx As Short
+		Public cy As Short
+		Public id As Short
 	End Structure
-	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
 	Public Structure DialogBoxHeader
-		Public Style As UInteger
-		Public ExStyle As UInteger
+		Public Style As Integer
+		Public ExStyle As Integer
 		Public cdit As UShort 'control amount
-		Public x As UShort
-		Public y As UShort
-		Public cx As UShort
-		Public cy As UShort
-		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-		Public menuName() As Byte
+		Public x As Short
+		Public y As Short
+		Public cx As Short
+		Public cy As Short
 	End Structure
-	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
 	Public Structure DialogFont
-		Public wPointSize As UShort
-		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-		Public FontName() As Byte
+		Public wPointSize As Short
 	End Structure
-	<StructLayout(LayoutKind.Sequential)>
+	<StructLayout(LayoutKind.Sequential, Pack:=2)>
 	Public Structure DialogFontEx
-		Public wPointSize As UShort
-		Public Weight As UShort
+		Public wPointSize As Short
+		Public Weight As Short
 		Public Italic As Byte
 		Public CharSet As Byte
-		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-		Public FontName() As Byte
 	End Structure
-	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
 	Public Structure DialogBoxHeaderEx
-		Public SignEx As UInteger '0xFFFF0001
-		Public Version As UInteger
-		Public Style As UInteger
-		Public ExStyle As UInteger
-		Public DlgItems As UShort 'control amount
-		Public x As UShort
-		Public y As UShort
-		Public cx As UShort
-		Public cy As UShort
-		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
-		Public menuName() As Byte
+		Public SignEx As Integer '0xFFFF0001
+		Public Version As Integer
+		Public Style As Integer
+		Public ExStyle As Integer
+		Public DlgItems As Short 'control amount
+		Public x As Short
+		Public y As Short
+		Public cx As Short
+		Public cy As Short
 	End Structure
 	'<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
 	'Public Structure DialogBoxHeader
