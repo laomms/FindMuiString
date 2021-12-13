@@ -33,8 +33,9 @@ Partial Class Form1
         Me.Label2 = New System.Windows.Forms.Label()
         Me.RichTextBox1 = New System.Windows.Forms.RichTextBox()
         Me.OpenFileDialog1 = New System.Windows.Forms.OpenFileDialog()
-        Me.BackgroundWorker1 = New System.ComponentModel.BackgroundWorker()
         Me.Timer1 = New System.Windows.Forms.Timer(Me.components)
+        Me.BackgroundWorker1 = New FindMuiString.ExtendedBackgroundWorker()
+        Me.Button4 = New System.Windows.Forms.Button()
         Me.SuspendLayout()
         '
         'TextBox1
@@ -44,14 +45,14 @@ Partial Class Form1
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.TextBox1.Location = New System.Drawing.Point(59, 24)
         Me.TextBox1.Name = "TextBox1"
-        Me.TextBox1.Size = New System.Drawing.Size(349, 21)
+        Me.TextBox1.Size = New System.Drawing.Size(283, 21)
         Me.TextBox1.TabIndex = 0
         Me.TextBox1.Text = "C:\Windows\System32\zh-CN"
         '
         'Button1
         '
         Me.Button1.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button1.Location = New System.Drawing.Point(415, 24)
+        Me.Button1.Location = New System.Drawing.Point(348, 24)
         Me.Button1.Name = "Button1"
         Me.Button1.Size = New System.Drawing.Size(52, 24)
         Me.Button1.TabIndex = 1
@@ -70,7 +71,7 @@ Partial Class Form1
         'Button2
         '
         Me.Button2.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button2.Location = New System.Drawing.Point(473, 23)
+        Me.Button2.Location = New System.Drawing.Point(411, 23)
         Me.Button2.Name = "Button2"
         Me.Button2.Size = New System.Drawing.Size(55, 26)
         Me.Button2.TabIndex = 3
@@ -122,17 +123,28 @@ Partial Class Form1
         '
         Me.OpenFileDialog1.FileName = "OpenFileDialog1"
         '
+        'Timer1
+        '
+        '
         'BackgroundWorker1
         '
         '
-        'Timer1
+        'Button4
         '
+        Me.Button4.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.Button4.Location = New System.Drawing.Point(475, 24)
+        Me.Button4.Name = "Button4"
+        Me.Button4.Size = New System.Drawing.Size(55, 26)
+        Me.Button4.TabIndex = 8
+        Me.Button4.Text = "停止"
+        Me.Button4.UseVisualStyleBackColor = True
         '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 12.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(542, 462)
+        Me.Controls.Add(Me.Button4)
         Me.Controls.Add(Me.RichTextBox1)
         Me.Controls.Add(Me.Label2)
         Me.Controls.Add(Me.Button3)
@@ -159,6 +171,7 @@ Partial Class Form1
     Friend WithEvents Label2 As Label
     Friend WithEvents RichTextBox1 As RichTextBox
     Friend WithEvents OpenFileDialog1 As OpenFileDialog
-    Friend WithEvents BackgroundWorker1 As System.ComponentModel.BackgroundWorker
     Friend WithEvents Timer1 As Timer
+    Friend WithEvents BackgroundWorker1 As ExtendedBackgroundWorker
+    Friend WithEvents Button4 As Button
 End Class

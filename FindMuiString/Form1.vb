@@ -526,4 +526,11 @@ Public Class Form1
         'RichTextBox1.Text = temp
         'RichTextBox1.SelectionBackColor = Color.White
     End Sub
+
+
+    Private Sub Button4_Click(sender As Object, e As EventArgs) Handles Button4.Click
+        Timer1.Stop()
+        BackgroundWorker1.CancelImmediately()
+        MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.Text = title))
+    End Sub
 End Class
