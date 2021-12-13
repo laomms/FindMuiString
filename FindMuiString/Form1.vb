@@ -102,7 +102,11 @@ Public Class Form1
                                     'Dim dataEntry As IResourceData = peImages.Resources.GetDirectory(ResourceType.String).GetDirectory(251).GetData(1033)
                                     Dim stringTables As IResourceDirectory = peImages.Resources.Entries.First(Function(e) e.Id = ResourceType.String)
                                     Dim stringEntry As IResourceDirectory = stringTables.Entries.First(Function(e) e.Id = item.Id)
-                                    Dim dataEntry As IResourceData = stringEntry.Entries.First(Function(e) e.Id = GetLangId(filename))
+                                    Dim LangId = GetLangId(filename)
+                                    If LangId = 0 Then
+                                        LangId = 2052
+                                    End If
+                                    Dim dataEntry As IResourceData = stringEntry.Entries.First(Function(e) e.Id = LangId)
                                     Dim content() As Byte = CType(dataEntry.Contents, AsmResolver.DataSegment).Data
                                     Dim stringlist As List(Of String) = GetStringResource(Path.GetFileName(muifile), item.Id, content)
                                     If stringlist.Count > 0 Then
@@ -114,7 +118,11 @@ Public Class Form1
                                 For Each item In entry.Entries
                                     Dim DialogTables As IResourceDirectory = peImages.Resources.Entries.First(Function(e) e.Id = ResourceType.Dialog)
                                     Dim DialogEntry As IResourceDirectory = DialogTables.Entries.First(Function(e) e.Id = item.Id)
-                                    Dim dataEntry As IResourceData = DialogEntry.Entries.First(Function(e) e.Id = GetLangId(filename))
+                                    Dim LangId = GetLangId(filename)
+                                    If LangId = 0 Then
+                                        LangId = 2052
+                                    End If
+                                    Dim dataEntry As IResourceData = DialogEntry.Entries.First(Function(e) e.Id = LangId)
                                     Dim content() As Byte = CType(dataEntry.Contents, AsmResolver.DataSegment).Data
                                     Dim stringlist As List(Of String) = ParseDialogString(Path.GetFileName(muifile), item.Id, content)
                                     If stringlist.Count > 0 Then
@@ -149,18 +157,22 @@ Public Class Form1
 
         Dim success = VerQueryValue(buffers, "\VarFileInfo\Translation", blockbuffer, versionLength)
         Dim langs() As UInteger
-        If success Then
-            langs = New UInteger((versionLength / 4) - 1) {}
-            Dim i As Integer = 0
-            Dim j As Integer = 0
-            Do While j < versionLength
-                langs(i) = (Marshal.ReadInt16(blockbuffer, j) << 16) ' Or Marshal.ReadInt16(blockbuffer, j + 2)
-                i += 1
-                j += 4
-            Loop
-        Else
+        Try
+            If success Then
+                langs = New UInteger(versionLength / 4 - 1) {}
+                Dim i As Integer = 0
+                Dim j As Integer = 0
+                Do While j < versionLength
+                    langs(i) = (Marshal.ReadInt16(blockbuffer, j) << 16) ' Or Marshal.ReadInt16(blockbuffer, j + 2)
+                    i += 1
+                    j += 4
+                Loop
+            Else
+                langs = New UInteger() {&H4090000}
+            End If
+        Catch ex As Exception
             langs = New UInteger() {&H4090000}
-        End If
+        End Try
         Return langs(0)
     End Function
 
@@ -172,17 +184,20 @@ Public Class Form1
             BackgroundWorker1.RunWorkerAsync(arguments)
         End If
     End Sub
-
+    Private ts As TimeSpan
+    Private sw As Stopwatch
     Delegate Sub NewTimersStar()
     Private Sub TimersStar()
+        sw = New Stopwatch()
+        AddHandler Timer1.Tick, AddressOf Timer1_Tick
         Timer1.Interval = 1
-        Timer1.Enabled = True
+        sw.Start()
         Timer1.Start()
     End Sub
     Private Sub Timer1_Tick(sender As Object, e As EventArgs) Handles Timer1.Tick
-        On Error Resume Next
-        totalTime += 1
-        MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.Text = title + "        " + Format((totalTime Mod 3600) \ 60, "00") & ":" & Format(totalTime Mod 60, "00")))
+        ts = sw.Elapsed
+        MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.Text = title + "        " + String.Format("{0:D2}:{1:D2}:{2:D2}:{3:D2}", ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds \ 10)))
+
     End Sub
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -461,12 +476,54 @@ Public Class Form1
         Return outString.Length * 2
     End Function
 
-    'Private Shared Function GetUnicodeStringLength(ByVal byteIn() As Byte) As Integer
-    '    Dim nullterm As Integer = 0
-    '    Do While nullterm < byteIn.Length AndAlso byteIn(nullterm) <> 0
-    '        nullterm += 2
-    '    Loop
-    '    Return nullterm
-    'End Function
+    Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
+        If RichTextBox1.Text = "" Or TextBox2.Text = "" Then Return
+        'Find(RichTextBox1, TextBox2.Text, Color.Blue)
+        Dim startindex As Integer = 0
+        startindex = FindMyText(TextBox2.Text.Trim(), start, RichTextBox1.Text.Length)
+        If startindex = -1 AndAlso start >= 0 Then
+            start = 0
+            startindex = FindMyText(TextBox2.Text.Trim(), start, RichTextBox1.Text.Length)
+        End If
 
+        If startindex >= 0 Then
+            RichTextBox1.Select(startindex, TextBox2.TextLength)
+            RichTextBox1.SelectionBackColor = Color.Yellow
+            Dim endindex As Integer = TextBox2.Text.Length
+            RichTextBox1.Select(startindex, endindex)
+            RichTextBox1.ScrollToCaret()
+            start = startindex + endindex
+        End If
+    End Sub
+
+    Private indexOfSearchText = 0
+    Private start = 0
+    Public Function FindMyText(ByVal txtToSearch As String, ByVal searchStart As Integer, ByVal searchEnd As Integer) As Integer
+        If searchStart > 0 AndAlso searchEnd > 0 AndAlso indexOfSearchText >= 0 Then
+            RichTextBox1.Undo()
+        End If
+        Dim retVal As Integer = -1
+
+        If searchStart >= 0 AndAlso indexOfSearchText >= 0 Then
+            If searchEnd > searchStart OrElse searchEnd = -1 Then
+                indexOfSearchText = RichTextBox1.Find(txtToSearch, searchStart, searchEnd, RichTextBoxFinds.None)
+                If indexOfSearchText <> -1 Then
+                    retVal = indexOfSearchText
+                Else
+                    start = 0
+                    indexOfSearchText = 0
+                End If
+            End If
+        End If
+        Return retVal
+    End Function
+
+    Private Sub TextBox2_TextChanged(sender As Object, e As EventArgs) Handles TextBox2.TextChanged
+        'start = 0
+        'indexOfSearchText = 0
+        'Dim temp As String = RichTextBox1.Text
+        'RichTextBox1.Text = String.Empty
+        'RichTextBox1.Text = temp
+        'RichTextBox1.SelectionBackColor = Color.White
+    End Sub
 End Class

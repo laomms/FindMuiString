@@ -85,6 +85,7 @@ Partial Class Form1
         Me.TextBox2.Name = "TextBox2"
         Me.TextBox2.Size = New System.Drawing.Size(333, 21)
         Me.TextBox2.TabIndex = 4
+        Me.TextBox2.Text = "许可证详细信息"
         '
         'Button3
         '
