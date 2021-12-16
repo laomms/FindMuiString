@@ -97,7 +97,23 @@ Public Class Form1
                     Dim peImages As AsmResolver.PE.IPEImage = AsmResolver.PE.PEImage.FromFile(filename)
                     For Each entry As IResourceDirectory In peImages.Resources.Entries
                         If entry.IsDirectory Then
-                            If entry.Id = 6 Then
+                            If entry.Id = 4 Then
+                                For Each item In entry.Entries
+                                    Dim MenuTables As IResourceDirectory = peImages.Resources.Entries.First(Function(e) e.Id = ResourceType.Menu)
+                                    Dim MenuEntry As IResourceDirectory = MenuTables.Entries.First(Function(e) e.Id = item.Id)
+                                    Dim LangId = GetLangId(filename)
+                                    If LangId = 0 Then
+                                        LangId = 2052
+                                    End If
+                                    Dim dataEntry As IResourceData = MenuEntry.Entries.First(Function(e) e.Id = LangId)
+                                    Dim content() As Byte = CType(dataEntry.Contents, AsmResolver.DataSegment).Data
+                                    Dim stringlist As List(Of String) = ParseMenuString(Path.GetFileName(muifile), item.Id, content)
+                                    If stringlist.Count > 0 Then
+                                        MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.RichTextBox1.AppendText(String.Join(vbNewLine, stringlist) + vbNewLine)))
+                                        MyInstance.RichTextBox1.Invoke(New MethodInvoker(Sub() MyInstance.RichTextBox1.ScrollToCaret()))
+                                    End If
+                                Next
+                            ElseIf entry.Id = 6 Then
                                 For Each item In entry.Entries
                                     'Dim dataEntry As IResourceData = peImages.Resources.GetDirectory(ResourceType.String).GetDirectory(251).GetData(1033)
                                     Dim stringTables As IResourceDirectory = peImages.Resources.Entries.First(Function(e) e.Id = ResourceType.String)
@@ -214,7 +230,7 @@ Public Class Form1
             Dim offset As Integer = 0
             For index As Integer = 0 To 15
                 If AscW(OldBinary(offset)) <> 0 Then
-                    Dim length As Integer = AscW(OldBinary(offset)) ' GetWord()  // String length in characters
+                    Dim length As Integer = AscW(OldBinary(offset))
                     offset += 1
                     If length > 0 Then
                         Try
@@ -445,6 +461,112 @@ Public Class Form1
 #End Region
         Return result
     End Function
+    Private Shared Function ParseMenuString(ByVal filename As String, ByVal ResId As Integer, ByVal MenuData() As Byte) As List(Of String)
+        Dim result As New List(Of String)
+        Dim len As Integer
+        Dim outString As String = ""
+        Dim isMenuEx As Boolean
+        Dim header As Object
+        Dim bytesIn() As Byte = MenuData
+        If bytesIn(0) = 1 Then
+            isMenuEx = True
+            header = New MenuExHeader()
+        Else
+            isMenuEx = False
+            header = New MenuHeader()
+        End If
+        Dim size = Marshal.SizeOf(header)
+        Dim buff = Marshal.AllocHGlobal(size)
+        Marshal.Copy(bytesIn.Take(size).ToArray(), 0, buff, size)
+        If isMenuEx = True Then
+            header = Marshal.PtrToStructure(buff, GetType(MenuExHeader))
+        Else
+            header = Marshal.PtrToStructure(buff, GetType(MenuHeader))
+        End If
+        FreeLibrary(buff)
+        bytesIn = bytesIn.Skip(size).ToArray
+        bytesIn = bytesIn.Skip(MakeDwordAlign(MenuData.Length - bytesIn.Length)).ToArray
+        Try
+            If isMenuEx = False Then
+                Do While bytesIn.Length > 0
+                    size = Marshal.SizeOf(GetType(MenuItemHeader))
+                    buff = Marshal.AllocHGlobal(size)
+                    Marshal.Copy(bytesIn.Take(size).ToArray(), 0, buff, size)
+                    Dim MenuItem As MenuItemHeader = Marshal.PtrToStructure(buff, GetType(MenuItemHeader))
+                    Marshal.FreeHGlobal(buff)
+                    bytesIn = bytesIn.Skip(size).ToArray
+                    If (MenuItem.resInfo And MenuItemOptions.MF_POPUP) <> 0 And MenuItem.resInfo <> MenuItemOptions.MF_END Then '普通弹出式菜单项
+                        If bytesIn(0) = 0 Then
+                            result.Add("[" + filename + "]" + ResId.ToString() + "->(Pop)")
+                        Else
+                            len = GetUnicodeString(bytesIn, outString)
+                            result.Add("[" + filename + "]" + ResId.ToString() + "->" + outString + "(Pop)")
+                            bytesIn = bytesIn.Skip(len).ToArray
+                        End If
+                    Else
+                        If MenuItem.resInfo And MenuItemOptions.MF_END <> 0 Then
+                            If bytesIn(0) <> 0 Then
+                                len = GetUnicodeString(bytesIn, outString)
+                                result.Add("[" + filename + "]" + ResId.ToString() + "->" + MenuItem.mtId.ToString + ":" + outString)
+                                bytesIn = bytesIn.Skip(len).ToArray
+                            End If
+                        Else
+                            If bytesIn(0) <> 0 Then
+                                len = GetUnicodeString(bytesIn, outString)
+                                result.Add("[" + filename + "]" + ResId.ToString() + "->" + MenuItem.mtId.ToString + ":" + outString)
+                                bytesIn = bytesIn.Skip(len).ToArray
+                            End If
+                        End If
+                        bytesIn = bytesIn.Skip(2).ToArray
+                    End If
+                Loop
+            Else
+                Do While bytesIn.Length > 0
+                    size = Marshal.SizeOf(GetType(MenuExItem))
+                    buff = Marshal.AllocHGlobal(size)
+                    Marshal.Copy(bytesIn.Take(size).ToArray(), 0, buff, size)
+                    Dim MenuITM As MenuExItem = Marshal.PtrToStructure(buff, GetType(MenuExItem))
+                    bytesIn = bytesIn.Skip(size).ToArray
+                    Marshal.FreeHGlobal(buff)
+                    If (MenuITM.resInfo And MenuExItemInfo.HasChildren) <> 0 Then  '弹出式菜单
+                        len = GetUnicodeString(bytesIn, outString)
+                        result.Add("[" + filename + "]" + ResId.ToString() + "->" + MenuITM.mtId.ToString + ":" + IIf(outString <> "", outString + "(Pop)", "(Pop)"))
+                        bytesIn = bytesIn.Skip(len).ToArray
+                        If len > 0 Then
+                            bytesIn = bytesIn.Skip(6).ToArray
+                        Else
+                            bytesIn = bytesIn.Skip(4).ToArray
+                        End If
+
+                    Else
+                        If MenuITM.dwType = MenuExItemType.MF_SEPARATOR Then '分隔符
+                            bytesIn = bytesIn.Skip(2).ToArray
+                            result.Add("[" + filename + "]" + ResId.ToString() + "->------")
+                        Else
+                            len = GetUnicodeString(bytesIn, outString)
+                            result.Add("[" + filename + "]" + ResId.ToString() + "->" + MenuITM.mtId.ToString + ":" + outString)
+                            bytesIn = bytesIn.Skip(len + 2).ToArray
+                        End If
+                    End If
+                    bytesIn = bytesIn.Skip(MakeDwordAlign(MenuData.Length - bytesIn.Length)).ToArray
+                Loop
+            End If
+        Catch ex As Exception
+
+        End Try
+
+
+        Return result
+    End Function
+    Private Shared Function MakeDwordAlign(m_pos As Integer) As Integer
+        Dim mods As UInteger = m_pos And 3
+        Dim new_pos As Integer = m_pos
+        If mods <> 0 Then
+            new_pos += 4 - mods
+        End If
+        Return new_pos - m_pos
+    End Function
+
     Private Shared Function GetUnicodeString(ByVal bytesIn() As Byte, ByRef outString As String) As Integer
         Dim result As New List(Of String)
         Dim len As Integer
@@ -475,11 +597,10 @@ Public Class Form1
         End Using
         Return outString.Length * 2
     End Function
-
     Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
         If RichTextBox1.Text = "" Or TextBox2.Text = "" Then Return
         'Find(RichTextBox1, TextBox2.Text, Color.Blue)
-        Dim startindex As Integer = 0
+        Dim startindex As Integer
         startindex = FindMyText(TextBox2.Text.Trim(), start, RichTextBox1.Text.Length)
         If startindex = -1 AndAlso start >= 0 Then
             start = 0
@@ -532,5 +653,9 @@ Public Class Form1
         Timer1.Stop()
         BackgroundWorker1.CancelImmediately()
         MyInstance.Invoke(New MethodInvoker(Sub() MyInstance.Text = title))
+    End Sub
+
+    Private Sub OpenFileDialog1_FileOk(sender As Object, e As CancelEventArgs) Handles OpenFileDialog1.FileOk
+
     End Sub
 End Class

@@ -54,10 +54,14 @@ Module Module1
 		Public y As Short
 		Public cx As Short
 		Public cy As Short
+		'<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		'Public menuName() As Byte
 	End Structure
 	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
 	Public Structure DialogFont
 		Public wPointSize As Short
+		'<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		'Public FontName() As Byte
 	End Structure
 	<StructLayout(LayoutKind.Sequential, Pack:=2)>
 	Public Structure DialogFontEx
@@ -65,6 +69,8 @@ Module Module1
 		Public Weight As Short
 		Public Italic As Byte
 		Public CharSet As Byte
+		'<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		'Public FontName() As Byte
 	End Structure
 	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
 	Public Structure DialogBoxHeaderEx
@@ -77,6 +83,8 @@ Module Module1
 		Public y As Short
 		Public cx As Short
 		Public cy As Short
+		'<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		'Public menuName() As Byte
 	End Structure
 	'<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto)>
 	'Public Structure DialogBoxHeader
@@ -160,7 +168,6 @@ Module Module1
 		DS_CENTER = &H800
 		DS_3DLOOK = &H4
 	End Enum
-
 	Public Enum WindowExStyles
 		WS_EX_DLGMODALFRAME = &H1
 		WS_EX_NOPARENTNOTIFY = &H4
@@ -191,7 +198,6 @@ Module Module1
 		WS_EX_COMPOSITED = &H2000000
 
 	End Enum
-
 	Public Enum WindowStyles As UInteger
 		WS_OVERLAPPED = &H0
 		WS_POPUP = &H80000000UI
@@ -460,6 +466,81 @@ Module Module1
 		ACS_TRANSPARENT = &H2
 		ACS_AUTOPLAY = &H4
 		ACS_TIMER = &H8
+	End Enum
+
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
+	Public Class MenuHeader
+		Public wVersion As Short
+		Public cbHeaderSize As Short
+	End Class
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
+	Public Class MenuExHeader
+		Public wVersion As Short
+		Public cbHeaderSize As Short
+		Public dwHelpId As Integer
+	End Class
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
+	Structure PopupMenuItem
+		Public resInfo As UShort
+		<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		Public szItemText() As Byte  '菜单名
+	End Structure
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
+	Structure MenuItemHeader
+		Public resInfo As UShort
+		Public mtId As UShort
+		'<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		'Public szItemText() As Byte  '菜单名
+	End Structure
+
+
+	<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Auto, Pack:=2)>
+	Friend Structure MenuExItem
+		Public dwType As UInteger
+		Public dwState As UInteger
+		Public mtId As Integer
+		Public resInfo As UShort
+		'<MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+		'Public szItemText() As Byte  '菜单名
+
+	End Structure
+
+	Public Enum MenuItemOptions As UShort
+		MF_GRAYED = &H1
+		MF_DISABLED = &H2
+		MF_BITMAP = &H4
+		MF_CHECKED = &H8
+		MF_MENUBARBREAK = &H20
+		MF_MENUBREAK = &H40
+		MF_OWNERDRAW = &H100
+		MF_HELP = &H4000
+		MF_POPUP = &H10
+		MF_END = &H80
+	End Enum
+	Enum MenuExItemInfo As UShort
+		LastItem = &H80
+		HasChildren = &H1
+	End Enum
+	Enum MenuExItemType As UInteger
+		MF_BITMAP = &H4
+		MF_MENUBARBREAK = &H20
+		MF_MENUBREAK = &H40
+		MF_OWNERDRAW = &H100
+		MF_USECHECKBITMAPS = &H200
+		MF_RIGHTJUSTIFY = &H4000
+		MF_RIGHTORDER = &H2000
+		MF_SEPARATOR = &H800
+		MF_STRING = &H0
+	End Enum
+	Enum MenuExItemState As Integer
+		MF_CHECKED = &H8
+		MF_DEFAULT = &H1000
+		MF_DISABLED = &H1
+		MF_ENABLED = &H0
+		MF_GRAYED = &H3
+		MF_HILITE = &H80
+		MF_UNCHECKED = &H0
+		MF_UNHILITE = &H0
 	End Enum
 
 End Module
