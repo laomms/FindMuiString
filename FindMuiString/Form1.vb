@@ -412,10 +412,6 @@ Public Class Form1
                     ctlData = CType(Marshal.PtrToStructure(buff, GetType(ControlData)), ControlData)
                 End If
                 Marshal.FreeHGlobal(buff)
-                'Debug.Print("Constol ID:" + ctlData.id.ToString)
-                'Dim Style = If(isDialogEx, ctlData.Style, ctlData.ExStyle)
-                'Dim styleValue = Style And &HF
-                'Debug.Print("style:0x" + CInt(ctlData.style).ToString("x8") + " exstyle:0x" + CInt(ctlData.exstyle).ToString("x8") + " style value:" + styleValue.ToString)
                 Dim bClassID() As Byte = bItemData.Skip(size + 2).ToArray()
                 If bClassID(0) = &HFF And bClassID(1) = &HFF Then '控件类型
                     bClassID = bClassID.Skip(2).ToArray()
@@ -442,16 +438,13 @@ Public Class Form1
                     bClassID = bClassID.Skip(2).ToArray()
                     len = GetUnicodeString(bClassID, outString)
                     result.Add(text + ctlData.id.ToString() + ":" + outString)
-                    Debug.Print(text + ctlData.id.ToString() + ":" + outString)
                     bClassID = bClassID.Skip(len).ToArray()
                 Else
                     len = GetUnicodeString(bClassID, outString)
                     result.Add(text + ctlData.id.ToString() + ":" + outString)
-                    Debug.Print(text + ctlData.id.ToString() + ":" + outString)
                     bClassID = bClassID.Skip(len).ToArray()
                 End If
                 bClassID = bClassID.Skip(2).ToArray
-                Debug.Print(vbNewLine)
                 If isDialogEx Then bItemData = bClassID.Skip(2).ToArray
             Next i
         Catch ex As Exception
