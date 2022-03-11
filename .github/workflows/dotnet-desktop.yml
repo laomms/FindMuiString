@@ -61,5 +61,5 @@ jobs:
     - name: Upload to release
       uses: actions/upload-artifact@v1.0.0
       with:
-        name: published_webapp
+        name: FindMuiString
         path: FindMuiString\bin\Release
