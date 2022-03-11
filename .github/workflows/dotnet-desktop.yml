@@ -47,7 +47,7 @@ jobs:
 
     # 编译整个项目
     - name: Build the solution
-      run: msbuild /p:Configuration=$env:Configuration
+      run: msbuild /p:Configuration=$env:Configuration /p:DeployOnBuild=true /p:PublishProfile=FolderProfile
       env:
         Configuration: ${{ matrix.configuration }}
 
