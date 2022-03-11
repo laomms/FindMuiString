@@ -59,7 +59,7 @@ jobs:
      
     # 上传并发布
     - name: Upload to release
-      uses: Upload to release/upload-to-release@v1.0.0
+      uses: FindMuiString/upload-to-release@v1.0.0
       with:
         name: published_webapp
         path: bin\Release\Publish
