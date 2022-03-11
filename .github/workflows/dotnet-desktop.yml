@@ -59,7 +59,7 @@ jobs:
      
     # 上传并发布
     - name: Upload to release
-      uses: actions/FindMuiString@1.0
+      uses: FindMuiString@1.0
       with:
         name: published_webapp
         path: bin\Release\Publish
